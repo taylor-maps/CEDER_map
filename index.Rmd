@@ -1,5 +1,29 @@
 ---
-title: "My Website"
+title: "Map"
+
 ---
 
-Hello, Website!
+Hello!
+
+```{r, include=F}
+library(tidyverse)
+library(mapview)
+library(leaflet)
+library(htmltools)
+
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r}
+states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\states_sf_shift.RDS)")
+cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\city_sf_shift.RDS)")
+
+load(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\CEDER_map_function.RData)")
+
+```
+
+```{r, out.width= '100%'}
+ceder_map(state_sf = states, 
+          city_sf = cities, 
+          shift_geos = T)
+```

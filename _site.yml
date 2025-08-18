@@ -1,9 +1,11 @@
-name: "my-website"
+name: "ceder-map"
 output_dir: "."
 navbar:
-  title: "My Website"
+  title: "CEDER Map"
   left:
-    - text: "Home"
+    - text: "Map"
       href: index.html
     - text: "About"
       href: about.html
+output:
+  html_document:
