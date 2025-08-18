@@ -25,5 +25,6 @@ load(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\
 ```{r, out.width= '100%'}
 ceder_map(state_sf = states, 
           city_sf = cities, 
-          shift_geos = T)
+          shift_geos = T,
+          title=F)
 ```
