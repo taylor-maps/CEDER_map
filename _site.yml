@@ -3,7 +3,7 @@ output_dir: "."
 navbar:
   title: "CEDER Map"
   left:
-    - text: "Map"
+    - text: "Internal Map"
       href: index.html
     - text: "About"
       href: about.html
