@@ -1,6 +1,5 @@
 ---
-title: "Internal CEDER Map"
-
+title: "CEDER Reach and Diabetes Prevalence"
 ---
 
 ```{r, include=F}
@@ -8,8 +7,17 @@ library(tidyverse)
 library(mapview)
 library(leaflet)
 library(htmltools)
+#library(extrafont)
 
 knitr::opts_chunk$set(echo=FALSE)
+
+#https://rstudio4edu.github.io/rstudio4edu-book/rmd-yours.html
+```
+
+```{css, echo=FALSE}
+* {
+  font-family: Verdana, sans-serif;
+}
 ```
 
 ```{r}
@@ -27,4 +35,8 @@ ceder_map(state_sf = states,
           city_sf = cities, 
           shift_geos = F,
           title=F)
+
+date <- format(Sys.Date(), "%B %d, %Y")
 ```
+
+Last updated `r date`

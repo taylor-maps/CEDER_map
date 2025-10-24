@@ -1,0 +1,35 @@
+* {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-container {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-control {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-control-layers {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-control-layers-list {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-control-layers-base {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-control-layers-overlays {
+  font-family: Verdana, sans-serif;
+}
+
+.leaflet-toolstip-content {
+  font-family: Verdana, sans-serif;
+}

@@ -1,11 +1,12 @@
 name: "ceder-map"
 output_dir: "."
 navbar:
-  title: "CEDER Map"
+  title: "CEDER Maps"
   left:
-    - text: "Internal Map"
+    - text: "CEDER Reach"
       href: index.html
-    - text: "About"
-      href: about.html
+ #   - text: "About"
+ #     href: about.html
 output:
   html_document:
+    css: style.css
