@@ -22,8 +22,10 @@ knitr::opts_chunk$set(echo=FALSE)
 
 ```{r}
 #load spatial data
-states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\states_sf.RDS)")
-cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\ceder_centroids.RDS)")
+# states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\states_sf.RDS)")
+# cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\ceder_centroids.RDS)")
+states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\states_sf_shift.RDS)")
+cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\ceder_centroids_shift.RDS)")
 
 #load functions
 load(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\CEDER_map_function.RData)")
@@ -31,12 +33,12 @@ load(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\
 ```
 
 ```{r, out.width= '100%'}
-ceder_map(state_sf = states, 
+ceder_map_function(state_sf = states, 
           city_sf = cities, 
-          shift_geos = F,
-          title=F)
+          shift_geos = T)
 
 date <- format(Sys.Date(), "%B %d, %Y")
 ```
 
-Last updated `r date`
+Last updated `r date`<br>
+Diabetes prevalence data are from 2022
