@@ -7,9 +7,7 @@ library(tidyverse)
 library(mapview)
 library(leaflet)
 library(htmltools)
-#install.packages("leaflegend")
 library(leaflegend)
-#library(extrafont)
 
 knitr::opts_chunk$set(echo=FALSE)
 
@@ -24,13 +22,15 @@ knitr::opts_chunk$set(echo=FALSE)
 
 ```{r}
 #load spatial data
-# states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\states_sf.RDS)")
-# cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\ceder_centroids.RDS)")
-states <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\states_sf_shift.RDS)")
-cities <- readRDS(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\ceder_centroids_shift.RDS)")
 
-#load functions
-load(r"(R:\Epi-Division\City Health Dashboard\Analyses for communications\CEDER\Outputted files\CEDER_map_function.RData)")
+# states <- readRDS("Prep work/states_sf.RDS")
+# cities <- readRDS("Prep work/ceder_centroids.RDS")
+states <- readRDS("Prep work/states_sf_shift.RDS")
+cities <- readRDS("Prep work/ceder_centroids_shift.RDS")
+
+#load function
+
+load("Prep work/CEDER_map_function.RData")
 
 ```
 

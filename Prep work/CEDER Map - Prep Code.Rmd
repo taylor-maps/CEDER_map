@@ -1,0 +1,391 @@
+---
+title: "CEDER Map - Prep Code"
+author: "TL"
+date: "2026-03-17"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+---
+
+-   <https://med.nyu.edu/centers-programs/national-center-engagement-diabetes-research/about-ceder>
+-   <https://www.google.com/maps/d/u/0/viewer?mid=1Oks5vk9N2ziptWsne-bgNte8I-vNFJk&ll=44.55547620324582%2C-113.4835347&z=4>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse) #piping, dplyr
+library(tigris) #census spatial files
+options(tigris_use_cache = TRUE)
+library(mapview) #quick maps
+library(leaflet) #final maps
+library(sf) #spatial data manipulation
+sf_use_s2(F) #turn off spherical spatial data
+library(htmltools) #needed for leaflet title
+library(readxl)
+#install.packages("leaflegend")
+
+file_update_date <- "3.12.26"
+
+```
+
+
+## Load CEDER data, standardize across sheets
+
+```{r}
+
+experts <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "Experts by sector") %>%
+  janitor::clean_names() %>%
+  mutate(type = paste0("Experts: ",sector)) %>%
+  select(institution,location,type)
+
+clients <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "CEDER Client Locations") %>%
+  janitor::clean_names() %>%
+  mutate(type = "Client Locations") %>%
+  rename(location = client_location) %>%
+  select(institution,location,type)
+
+projects <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "CEDER Project Locations") %>%
+  janitor::clean_names() %>%
+  mutate(type = "Project Locations") %>%
+  rename(location = project_location_s) %>%
+  select(-count, -project_location_frequency)
+
+niddk <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "NIDDK_Funding_Locs") %>%
+  janitor::clean_names() %>%
+  rename(institution = organization) %>%
+  mutate(type = "NIDDK Projects",
+         location = paste0(stringr::str_to_title(city),", ",state),
+         #fix capitalization, assign neighborhoods to their appropriate cities
+         location = case_when(location == "Dekalb, IL" ~ "DeKalb, IL",
+                              location == "Mclean, VA" ~ "McLean, VA",
+                              location == "Charlestown, MA" ~ "Boston, MA",
+                              location == "Chestnut Hill, MA" ~ "Boston, MA",
+                              location == "Jamaica Plain, MA" ~ "Boston, MA",
+                              location == "La Jolla, CA" ~ "San Diego, CA",
+                              location == "North Dartmouth, MA" ~ "Dartmouth, MA",
+                              location == "Research Triangle Park, NC" ~ "Durham, NC",
+                              location == "Sherman Oaks, CA" ~ "Los Angeles, CA",
+                              location == "Woodland Hills, CA" ~ "Los Angeles, CA",
+                              TRUE ~ location)) %>%
+  select(institution, location, type)
+  
+
+```
+
+## Clean CEDER data
+
+```{r}
+
+#append all
+ceder_data <- bind_rows(experts,clients,projects,niddk) %>%
+  #create new variable to fix some location names for better merge with geography centroids
+  mutate(location_match = case_when(
+                               #match areas to city names
+                               location == "Aurora (Denver), CO" ~ "Aurora, CO",
+                    					 location == "San Francisco Bay Area, CA" ~ "San Francisco, CA",
+                    					 location == "Detroit Metropolitan Area, MI" ~ "Detroit, MI",
+                    					 location == "Long Island, NY" ~ "Brentwood, NY",
+                    					 location == "Los Angeles County, CA" ~ "Los Angeles, CA",
+                    					 location == "Tuskegee Institute, AL" ~ "Tuskegee, AL",
+                    					 location == "University Park, PA" ~ "State College, PA",
+                    					 location == "Salsbury Cove, ME" ~ "Bar Harbor, ME",
+
+                    					 #counties needed for NYC boroughs
+                    					 location == "Bronx, New York, NY" ~ "Bronx County, NY",
+                    					 location == "Bronx, NY" ~ "Bronx County, NY",
+                    					 location == "Brooklyn, New York, NY" ~ "Kings County, NY",
+                    					 location == "Brooklyn, NY" ~ "Kings County, NY",
+                    					 location == "Manhattan, New York, NY" ~ "New York County, NY",
+                    					 location == "Queens, New York, NY" ~ "Queens County, NY",
+                    					 location == "Queens, NY" ~ "Queens County, NY",
+                    					 
+                    					 location == "Honolulu, HI" ~ "Urban Honolulu, HI",
+                    					 
+                    					 #CDP name fixing
+                    					 location == "Emerald Hills, CA" ~ "Emerald Lake Hills, CA",
+                    					 location == "Lutherville Timonium, MD" ~ "Lutherville, MD",
+                    					 location == "Storrs-Mansfield, CT" ~ "Storrs, CT",
+                    					 
+                    					 TRUE ~ location)) %>%
+  separate(location_match, into = c("city_match","state_abbr"), sep = ", ") %>%
+  # add frequency column by types in cities - will determine city circle radius
+  group_by(city_match,state_abbr,type) %>%
+  mutate(freq_city_type = n()) %>%
+  ungroup() %>%
+  # add frequency column by institutions/types/city - will appear in city circle labels
+  group_by(city_match,state_abbr,type,institution) %>%
+  mutate(freq_city_type_institution = n()) %>%
+  ungroup() %>%
+  #create city circle label information 
+  mutate(institution_count = paste0(institution," (",freq_city_type_institution,")")) %>%
+  select(-institution, - freq_city_type_institution) %>%
+  distinct() %>%
+  arrange(institution_count) %>%
+  group_by(location,city_match, state_abbr,type,freq_city_type) %>%
+  summarize(institutions_lab = paste0(institution_count, collapse = " <br>")) %>%
+  ungroup() %>%
+  mutate(city_lab = paste0(location," <br>",type)) %>%
+  #turn type into a factor to control legend order
+  mutate(type = factor(type, levels = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community","NIDDK Projects")))
+
+
+```
+
+## Add centroid spatial information
+  
+* need to reproject with WGS84 to match leaflet layers
+* This section takes a while to run, can run once and load in saved file in next section
+
+```{r}
+
+  #cities for the entire country
+  us_states <- unique(fips_codes$state)[1:51]
+
+  place_info <- map_df(us_states,function(x) {
+    tigris::places(state = x, year="2020")} ) %>%
+      select(NAME,STATEFP)
+  
+  #county subdivisions for east coast states
+  cosub_states <- c("NY","MA","CT","RI","NJ","ME")
+  
+  cosub_info <- map_df(cosub_states,function(x){
+    tigris::county_subdivisions(year = "2020", state = x)}) %>%
+      filter(FUNCSTAT == "A") %>%
+      select(NAME,STATEFP)
+  
+  #counties needed for NY only
+  county_info <- tigris::counties(state = "NY", year = "2020") %>%
+    select(NAME=NAMELSAD,STATEFP)
+  
+  city_info <- rbind(place_info,county_info,cosub_info) %>%
+    #fix wonky Census names so merge works with CEDER files
+    mutate(NAME = case_when(NAME == "Milford city (balance)" ~ "Milford",
+                            NAME == "Athens-Clarke County unified government (balance)" ~ "Athens",
+                            NAME == "Augusta-Richmond County consolidated metro government (balance)" ~ "Augusta",
+                            NAME == "Indianapolis city (balance)" ~ "Indianapolis",
+                            NAME == "Butte-Silver Bow (balance)" ~ "Butte",
+                            NAME == "Nashville-Davidson metropolitan government (balance)" ~ "Nashville",
+                            NAME == "Greeley County unified government (balance)" ~ "Tribune",
+                            NAME == "Lexington-Fayette" ~ "Lexington",
+                            NAME == "Macon-Bibb County" ~ "Macon",
+                            NAME == "Hempstead" ~ "Hempstead Village",
+                            NAME == "Augusta-Richmond County consolidated government (balance)" ~ "Augusta",
+                            TRUE ~ NAME)) %>%
+    distinct(NAME,STATEFP,.keep_all=T)
+  
+  #reproject before centroid calculation, then project to match leaflet (WGS84)
+  city_proj <- st_transform(city_info, 5070)  # CONUS Albers
+  centroids_proj <- st_centroid(city_proj)
+  centroids_wgs  <- st_transform(centroids_proj, 4326)
+  
+#save file to re-load later if desired
+  saveRDS(centroids_wgs,file="centroids_no_data.RDS")
+  
+```
+
+```{r}
+
+#load spatial file that was created earlier (to save time)
+centroids_wgs <- readRDS("centroids_no_data.RDS")
+  
+  #combine with CEDER data
+  ceder_centroids <- ceder_data %>%
+    left_join(tidycensus::fips_codes %>% select(state_abbr=state,state_fips=state_code) %>% distinct(), by ="state_abbr") %>%
+    left_join(centroids_wgs, by = c("city_match"="NAME","state_fips"="STATEFP"))
+  
+        #convert back to sf object after merge
+        st_geometry(ceder_centroids) <- ceder_centroids$geometry
+        
+#Do all CEDER cities have geometry information attached?
+  missing_check <- ceder_centroids %>%
+    filter(st_is_empty(.))
+  
+    #export file for exploration
+    #write.csv(missing_check, file = paste0("missing_check_",file_update_date,".csv"))
+    
+# shift lower states and save files
+ceder_centroids_shift <- ceder_centroids %>% 
+  shift_geometry(geoid_column="state_fips") %>%
+  st_transform(4326)
+
+#save files
+saveRDS(ceder_centroids,file="ceder_centroids.RDS")
+saveRDS(ceder_centroids_shift,file="ceder_centroids_shift.RDS") 
+        
+```
+
+## State data
+
+-   state spatial boundaries
+-   state diabetes data
+
+```{r cars}
+
+#2022 diabetes
+state_diabetes <- read_csv("CDH-Dashboard-states-Diabetes.csv") %>%
+  filter(data_period == "2022") %>%
+  select(-suggested_citation)
+
+states_sf <- tigris::states(cb=T) %>% filter(STATEFP < 57)%>%
+  st_transform(4326) %>%
+  inner_join(state_diabetes, by=c("GEOID"="geo_fips"))
+
+states_sf_shift <- states_sf %>% 
+  shift_geometry(geoid_column="STATEFP") %>%
+  st_transform(4326)
+
+#save files
+saveRDS(states_sf,file="states_sf.RDS")
+saveRDS(states_sf_shift,file="states_sf_shift.RDS")
+
+```
+
+## Leaflet of cities in states
+
+```{r}
+##for testing function below##
+state_sf <- states_sf_shift
+city_sf <- ceder_centroids_shift
+
+shift_geos <- T
+```
+
+```{r}
+
+ceder_map_function <- function(state_sf, city_sf, shift_geos=T){
+  
+#### PREP STEPS ####  
+
+#create US border spatial object
+  us_border_sf <- state_sf %>% group_by() %>% summarize()
+  
+#add logarithmic frequency column for radius of city circles (makes it easier to map wide range of frequencies)
+ city_sf <- city_sf %>%
+   mutate(freq_log = (log(freq_city_type)+1)*5)
+ 
+#create continuous color palette for states
+
+  #grey_colors <- c("#EFEFEF","#BCBCBC","#898989","#565656","#232323") #5 colors, larger range
+  grey_colors <- c("#d5d5d5","#898989","#3d3d3d") #3 colors, slimmer range
+  
+  diabetes_bins_custom <- colorNumeric(palette = grey_colors, domain = state_sf$est)
+
+#create color bins for city circles
+  
+  #split niddk separately for better layering
+  niddk_sf <- city_sf %>% filter(type == "NIDDK Projects")
+  city_sf_filter <- city_sf %>% filter(type != "NIDDK Projects")
+     
+  #map colors
+  blue <- "#66ADBF" #"#007799" #client locations
+  green <- "#B2C7AD" #"#7FA375" #project locations
+  orange <- "#EBC396" #"#DFA050" #experts: academic
+  purple <- "#B28AC2" #"#803F98" #experts: community
+  blue_light <-"#92A7BA" #"#044C62" #niddk projects
+  
+  city_bins_filter <- colorFactor(palette = c(blue,green,orange,purple), domain = city_sf_filter$type)
+  niddk_color <- blue_light
+  
+  #create city labels - appear on hover, using special html formatting
+labels_city_filter <- sprintf("<strong>%s</strong><br/>%s", city_sf_filter$city_lab, city_sf_filter$institutions_lab) %>%
+                lapply(htmltools::HTML)
+
+    #separate labels for niddk
+    labels_niddk <- sprintf("<strong>%s</strong><br/>%s", niddk_sf$city_lab, niddk_sf$institutions_lab) %>%
+                lapply(htmltools::HTML)
+
+#### LEAFLET MAP ####
+  
+#map
+map_ceder <- leaflet(state_sf) %>%
+  # define custom panes for z-ordering circle markers so NIDDK stays underneath
+  addMapPane("niddkPane", zIndex = 400) %>%  # lower
+  addMapPane("cityPane",  zIndex = 500) %>%  # higher
+  #set map background 
+  {if(shift_geos==T)
+          #if geographies are shifted, use plain background (match water on Carto base map)
+          leaflet.extras::setMapWidgetStyle(.,list(background= "#d5e8eb")) #"aliceblue"
+    else
+          #if geographies aren't shifted, use a base map from Carto
+          addProviderTiles(.,providers$CartoDB.Voyager, group = "Base map")} %>%
+  #add diabetes by state
+  addPolygons(data = state_sf, 
+              fillColor= ~diabetes_bins_custom(est), #polygon fill
+              fillOpacity = 0.8, #polygon opacity
+              color = "white", #polygon outline color
+              weight = 1, #polygon outline weight
+              label = str_c(state_sf$NAME,": ",state_sf$est,"%"), #label for polygons, upon hover
+              highlight = highlightOptions( #settings for polygon changes, upon hover
+                weight = 2, 
+                color = "white",
+                fillOpacity = 1),
+              group = "Diabetes") %>%
+  #add diabetes legend (custom to remove negative ticks we don't want)
+  leaflegend::addLegendNumeric(
+    pal = diabetes_bins_custom,
+    values = ~ est,
+    title = "Diabetes Prevalence",
+    position = "bottomright",
+    fillOpacity = 0.8,
+    bins = 5, 
+    tickLength = 0,
+    tickWidth = 0,
+    numberFormat = function(x){paste0("  ",x,"%")}
+  ) %>%
+  #add US outline
+  addPolygons(data = us_border_sf,
+              fill = F,
+              color = "black",
+              weight = 1) %>%
+  #add NIDDK circles underneath all
+  addCircleMarkers(data = niddk_sf,
+                   fillColor = niddk_color, #circle fill
+                   fillOpacity = 0.9, #circle opacity
+                   opacity = 1, #outline opacity
+                   color = "black", #outline color
+                   weight = 0.3, # outline weight
+                   radius = niddk_sf$freq_log, 
+                   label = labels_niddk,
+                   group = "NIDDK Projects",
+                   options = pathOptions(pane = "niddkPane") #set underneath
+                   ) %>%      
+  #add city circles
+  addCircleMarkers(data = city_sf_filter,
+                   fillColor = ~city_bins_filter(type), #circle fill
+                   fillOpacity = 0.9, #circle opacity
+                   opacity = 1, #outline opacity
+                   color = "black", #outline color
+                   weight = 0.3, # outline weight
+                   radius = city_sf_filter$freq_log
+                   label = labels_city_filter,
+                   group = city_sf_filter$type,
+                   options = pathOptions(pane = "cityPane") #set on top
+                   ) %>%
+  #add layer control for city circles
+  addLayersControl(overlayGroups = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community" ,"NIDDK Projects"), 
+                       options = layersControlOptions(collapsed = FALSE, autoZIndex = FALSE),
+                       position = "bottomleft") %>%
+  #default NIDDK projects off
+  hideGroup("NIDDK Projects") %>%
+  #add legend for city circles
+  addLegend("bottomright", 
+            pal = city_bins, 
+            values = ~city_sf$type, 
+            title = "CEDER Reach", 
+            opacity = 0.9) %>%
+  #leafem::addMouseCoordinates() %>% # if you want to adjust the view of the map, can turn on coordinate to figure out best positioning
+  setView(lng = -96.58713, lat = 35.38978, zoom = 4)
+
+return(map_ceder)
+ 
+}
+
+#save function for use in online version
+save(ceder_map_function,file="CEDER_map_function.RData")
+
+```
+
+

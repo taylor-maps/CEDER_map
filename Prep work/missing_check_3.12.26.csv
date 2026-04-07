@@ -1,0 +1,5 @@
+,location,city_match,state_abbr,type,freq_city_type,institutions_lab,city_lab,state_fips,geometry,
+1,"Baltimore, MD ",Baltimore,MD ,Project Locations,1,Johns Hopkins University (1),"Baltimore, MD  <br>Project Locations",NA,c(NA, NA)
+2,"Durham, NC ",Durham,NC ,Project Locations,1,Duke Univeristy (1),"Durham, NC  <br>Project Locations",NA,c(NA, NA)
+3,"Manhatta, New York, NY",Manhatta,New York,Project Locations,1,NYU Grossman School of Medicine (1),"Manhatta, New York, NY <br>Project Locations",NA,c(NA, NA)
+4,"Yuma, Arizona",Yuma,Arizona,Client Locations,1,Onvida Health (1),"Yuma, Arizona <br>Client Locations",NA,c(NA, NA)
