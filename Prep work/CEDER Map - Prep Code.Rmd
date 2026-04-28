@@ -14,7 +14,14 @@ output:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages(c("tidyverse","tigris","mapview","leaflet","sf","htmltools","readxl","leaflegend"))
+
+#install.packages("rmarkdown")
+#install.packages("mapview")
+
+#rmarkdown, tidyverse, mapview
 
 library(tidyverse) #piping, dplyr
 library(tigris) #census spatial files
