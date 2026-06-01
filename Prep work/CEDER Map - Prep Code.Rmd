@@ -60,7 +60,7 @@ projects <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_upda
   janitor::clean_names() %>%
   mutate(type = "Project Locations") %>%
   #rename(location = project_location_s) %>%
-  select(-count, -project_location_frequency)
+  select(institution,location,type)
 
 niddk <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "NIDDK") %>%
   janitor::clean_names() %>%
