@@ -34,7 +34,7 @@ load("Prep work/CEDER_map_function.RData")
 
 ```
 
-```{r, out.width= '100%'}
+```{r, out.width= '100%',warning=FALSE}
 ceder_map_function(state_sf = states, 
           city_sf = cities, 
           shift_geos = T)

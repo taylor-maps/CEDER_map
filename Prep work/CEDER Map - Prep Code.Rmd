@@ -20,7 +20,9 @@ output:
 
 #install.packages("rmarkdown")
 #install.packages("mapview")
-
+#install.packages("janitor")
+#install.packages("tidycensus")
+#install.packages("leaflet.extras")
 #rmarkdown, tidyverse, mapview
 
 library(tidyverse) #piping, dplyr
@@ -34,7 +36,7 @@ library(htmltools) #needed for leaflet title
 library(readxl)
 #install.packages("leaflegend")
 
-file_update_date <- "3.12.26"
+file_update_date <- "5.29.26"
 
 ```
 
@@ -51,32 +53,33 @@ experts <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_updat
 clients <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "CEDER Client Locations") %>%
   janitor::clean_names() %>%
   mutate(type = "Client Locations") %>%
-  rename(location = client_location) %>%
+  #rename(location = client_location) %>%
   select(institution,location,type)
 
 projects <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "CEDER Project Locations") %>%
   janitor::clean_names() %>%
   mutate(type = "Project Locations") %>%
-  rename(location = project_location_s) %>%
+  #rename(location = project_location_s) %>%
   select(-count, -project_location_frequency)
 
-niddk <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "NIDDK_Funding_Locs") %>%
+niddk <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "NIDDK") %>%
   janitor::clean_names() %>%
   rename(institution = organization) %>%
   mutate(type = "NIDDK Projects",
-         location = paste0(stringr::str_to_title(city),", ",state),
+         #location = paste0(stringr::str_to_title(city),", ",state),
          #fix capitalization, assign neighborhoods to their appropriate cities
-         location = case_when(location == "Dekalb, IL" ~ "DeKalb, IL",
-                              location == "Mclean, VA" ~ "McLean, VA",
-                              location == "Charlestown, MA" ~ "Boston, MA",
-                              location == "Chestnut Hill, MA" ~ "Boston, MA",
-                              location == "Jamaica Plain, MA" ~ "Boston, MA",
-                              location == "La Jolla, CA" ~ "San Diego, CA",
-                              location == "North Dartmouth, MA" ~ "Dartmouth, MA",
-                              location == "Research Triangle Park, NC" ~ "Durham, NC",
-                              location == "Sherman Oaks, CA" ~ "Los Angeles, CA",
-                              location == "Woodland Hills, CA" ~ "Los Angeles, CA",
-                              TRUE ~ location)) %>%
+         #location = case_when(location == "Dekalb, IL" ~ "DeKalb, IL",
+                              #location == "Mclean, VA" ~ "McLean, VA",
+                              #location == "Charlestown, MA" ~ "Boston, MA",
+                              #location == "Chestnut Hill, MA" ~ "Boston, MA",
+                              #location == "Jamaica Plain, MA" ~ "Boston, MA",
+                              #location == "La Jolla, CA" ~ "San Diego, CA",
+                              #location == "North Dartmouth, MA" ~ "Dartmouth, MA",
+                              #location == "Research Triangle Park, NC" ~ "Durham, NC",
+                              #location == "Sherman Oaks, CA" ~ "Los Angeles, CA",
+                              #location == "Woodland Hills, CA" ~ "Los Angeles, CA",
+                              #TRUE ~ location)
+         ) %>%
   select(institution, location, type)
   
 
@@ -91,14 +94,14 @@ ceder_data <- bind_rows(experts,clients,projects,niddk) %>%
   #create new variable to fix some location names for better merge with geography centroids
   mutate(location_match = case_when(
                                #match areas to city names
-                               location == "Aurora (Denver), CO" ~ "Aurora, CO",
-                    					 location == "San Francisco Bay Area, CA" ~ "San Francisco, CA",
-                    					 location == "Detroit Metropolitan Area, MI" ~ "Detroit, MI",
-                    					 location == "Long Island, NY" ~ "Brentwood, NY",
-                    					 location == "Los Angeles County, CA" ~ "Los Angeles, CA",
-                    					 location == "Tuskegee Institute, AL" ~ "Tuskegee, AL",
-                    					 location == "University Park, PA" ~ "State College, PA",
-                    					 location == "Salsbury Cove, ME" ~ "Bar Harbor, ME",
+                    #            location == "Aurora (Denver), CO" ~ "Aurora, CO",
+                    # 					 location == "San Francisco Bay Area, CA" ~ "San Francisco, CA",
+                    # 					 location == "Detroit Metropolitan Area, MI" ~ "Detroit, MI",
+                    # 					 location == "Long Island, NY" ~ "Brentwood, NY",
+                    # 					 location == "Los Angeles County, CA" ~ "Los Angeles, CA",
+                    # 					 location == "Tuskegee Institute, AL" ~ "Tuskegee, AL",
+                    # 					 location == "University Park, PA" ~ "State College, PA",
+                    # 					 location == "Salsbury Cove, ME" ~ "Bar Harbor, ME",
 
                     					 #counties needed for NYC boroughs
                     					 location == "Bronx, New York, NY" ~ "Bronx County, NY",
@@ -111,10 +114,10 @@ ceder_data <- bind_rows(experts,clients,projects,niddk) %>%
                     					 
                     					 location == "Honolulu, HI" ~ "Urban Honolulu, HI",
                     					 
-                    					 #CDP name fixing
-                    					 location == "Emerald Hills, CA" ~ "Emerald Lake Hills, CA",
-                    					 location == "Lutherville Timonium, MD" ~ "Lutherville, MD",
-                    					 location == "Storrs-Mansfield, CT" ~ "Storrs, CT",
+                    					 # #CDP name fixing
+                    					 # location == "Emerald Hills, CA" ~ "Emerald Lake Hills, CA",
+                    					 # location == "Lutherville Timonium, MD" ~ "Lutherville, MD",
+                    					 # location == "Storrs-Mansfield, CT" ~ "Storrs, CT",
                     					 
                     					 TRUE ~ location)) %>%
   separate(location_match, into = c("city_match","state_abbr"), sep = ", ") %>%
@@ -148,48 +151,48 @@ ceder_data <- bind_rows(experts,clients,projects,niddk) %>%
 
 ```{r}
 
-  #cities for the entire country
-  us_states <- unique(fips_codes$state)[1:51]
-
-  place_info <- map_df(us_states,function(x) {
-    tigris::places(state = x, year="2020")} ) %>%
-      select(NAME,STATEFP)
-  
-  #county subdivisions for east coast states
-  cosub_states <- c("NY","MA","CT","RI","NJ","ME")
-  
-  cosub_info <- map_df(cosub_states,function(x){
-    tigris::county_subdivisions(year = "2020", state = x)}) %>%
-      filter(FUNCSTAT == "A") %>%
-      select(NAME,STATEFP)
-  
-  #counties needed for NY only
-  county_info <- tigris::counties(state = "NY", year = "2020") %>%
-    select(NAME=NAMELSAD,STATEFP)
-  
-  city_info <- rbind(place_info,county_info,cosub_info) %>%
-    #fix wonky Census names so merge works with CEDER files
-    mutate(NAME = case_when(NAME == "Milford city (balance)" ~ "Milford",
-                            NAME == "Athens-Clarke County unified government (balance)" ~ "Athens",
-                            NAME == "Augusta-Richmond County consolidated metro government (balance)" ~ "Augusta",
-                            NAME == "Indianapolis city (balance)" ~ "Indianapolis",
-                            NAME == "Butte-Silver Bow (balance)" ~ "Butte",
-                            NAME == "Nashville-Davidson metropolitan government (balance)" ~ "Nashville",
-                            NAME == "Greeley County unified government (balance)" ~ "Tribune",
-                            NAME == "Lexington-Fayette" ~ "Lexington",
-                            NAME == "Macon-Bibb County" ~ "Macon",
-                            NAME == "Hempstead" ~ "Hempstead Village",
-                            NAME == "Augusta-Richmond County consolidated government (balance)" ~ "Augusta",
-                            TRUE ~ NAME)) %>%
-    distinct(NAME,STATEFP,.keep_all=T)
-  
-  #reproject before centroid calculation, then project to match leaflet (WGS84)
-  city_proj <- st_transform(city_info, 5070)  # CONUS Albers
-  centroids_proj <- st_centroid(city_proj)
-  centroids_wgs  <- st_transform(centroids_proj, 4326)
-  
-#save file to re-load later if desired
-  saveRDS(centroids_wgs,file="centroids_no_data.RDS")
+#   #cities for the entire country
+#   us_states <- unique(fips_codes$state)[1:51]
+# 
+#   place_info <- map_df(us_states,function(x) {
+#     tigris::places(state = x, year="2020")} ) %>%
+#       select(NAME,STATEFP)
+#   
+#   #county subdivisions for east coast states
+#   cosub_states <- c("NY","MA","CT","RI","NJ","ME")
+#   
+#   cosub_info <- map_df(cosub_states,function(x){
+#     tigris::county_subdivisions(year = "2020", state = x)}) %>%
+#       filter(FUNCSTAT == "A") %>%
+#       select(NAME,STATEFP)
+#   
+#   #counties needed for NY only
+#   county_info <- tigris::counties(state = "NY", year = "2020") %>%
+#     select(NAME=NAMELSAD,STATEFP)
+#   
+#   city_info <- rbind(place_info,county_info,cosub_info) %>%
+#     #fix wonky Census names so merge works with CEDER files
+#     mutate(NAME = case_when(NAME == "Milford city (balance)" ~ "Milford",
+#                             NAME == "Athens-Clarke County unified government (balance)" ~ "Athens",
+#                             NAME == "Augusta-Richmond County consolidated metro government (balance)" ~ "Augusta",
+#                             NAME == "Indianapolis city (balance)" ~ "Indianapolis",
+#                             NAME == "Butte-Silver Bow (balance)" ~ "Butte",
+#                             NAME == "Nashville-Davidson metropolitan government (balance)" ~ "Nashville",
+#                             NAME == "Greeley County unified government (balance)" ~ "Tribune",
+#                             NAME == "Lexington-Fayette" ~ "Lexington",
+#                             NAME == "Macon-Bibb County" ~ "Macon",
+#                             NAME == "Hempstead" ~ "Hempstead Village",
+#                             NAME == "Augusta-Richmond County consolidated government (balance)" ~ "Augusta",
+#                             TRUE ~ NAME)) %>%
+#     distinct(NAME,STATEFP,.keep_all=T)
+#   
+#   #reproject before centroid calculation, then project to match leaflet (WGS84)
+#   city_proj <- st_transform(city_info, 5070)  # CONUS Albers
+#   centroids_proj <- st_centroid(city_proj)
+#   centroids_wgs  <- st_transform(centroids_proj, 4326)
+#   
+# #save file to re-load later if desired
+#   saveRDS(centroids_wgs,file="centroids_no_data.RDS")
   
 ```
 
@@ -211,7 +214,7 @@ centroids_wgs <- readRDS("centroids_no_data.RDS")
     filter(st_is_empty(.))
   
     #export file for exploration
-    #write.csv(missing_check, file = paste0("missing_check_",file_update_date,".csv"))
+    write.csv(missing_check, file = paste0("missing_check_",file_update_date,".csv"))
     
 # shift lower states and save files
 ceder_centroids_shift <- ceder_centroids %>% 
@@ -366,7 +369,7 @@ map_ceder <- leaflet(state_sf) %>%
                    opacity = 1, #outline opacity
                    color = "black", #outline color
                    weight = 0.3, # outline weight
-                   radius = city_sf_filter$freq_log
+                   radius = city_sf_filter$freq_log,
                    label = labels_city_filter,
                    group = city_sf_filter$type,
                    options = pathOptions(pane = "cityPane") #set on top
@@ -379,7 +382,7 @@ map_ceder <- leaflet(state_sf) %>%
   hideGroup("NIDDK Projects") %>%
   #add legend for city circles
   addLegend("bottomright", 
-            pal = city_bins, 
+            pal = city_bins_filter, 
             values = ~city_sf$type, 
             title = "CEDER Reach", 
             opacity = 0.9) %>%
@@ -395,4 +398,8 @@ save(ceder_map_function,file="CEDER_map_function.RData")
 
 ```
 
+
+```{r}
+ceder_map_function(state_sf=states_sf_shift,city_sf=ceder_centroids_shift,shift_geos = TRUE)
+```
 
