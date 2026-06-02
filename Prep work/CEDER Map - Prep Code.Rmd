@@ -295,7 +295,7 @@ ceder_map_function <- function(state_sf, city_sf, shift_geos=T){
   green <- "#7FA375"#"#B2C7AD"  #project locations
   orange <- "#DFA050"#"#EBC396" # #experts: academic
   purple <- "#803F98"#"#B28AC2" # #experts: community
-  blue_light <-"#898989" #"#92A7BA" #"#044C62" #niddk projects
+  blue_light <-"#92A7BA" #"#898989" #"#044C62" #niddk projects
   
   #different color bins
   city_bins <- colorFactor(palette = c(blue,green,orange,purple,blue_light), domain = city_sf$type)
