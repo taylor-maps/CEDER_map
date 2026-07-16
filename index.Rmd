@@ -43,4 +43,5 @@ date <- format(Sys.Date(), "%B %d, %Y")
 ```
 
 Last updated `r date`<br>
-Diabetes prevalence data are from 2022
+Diabetes prevalence data are from 2022 <br>
+NIDDK Awards are from fiscal year 2025

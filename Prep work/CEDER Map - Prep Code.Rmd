@@ -65,7 +65,7 @@ projects <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_upda
 niddk <- readxl::read_xlsx(paste0("NIDDK, Internal CEDER Map Data_",file_update_date,"_deidentified.xlsx"), sheet = "NIDDK") %>%
   janitor::clean_names() %>%
   rename(institution = organization) %>%
-  mutate(type = "NIDDK Projects",
+  mutate(type = "NIDDK Award Sites",
          #location = paste0(stringr::str_to_title(city),", ",state),
          #fix capitalization, assign neighborhoods to their appropriate cities
          #location = case_when(location == "Dekalb, IL" ~ "DeKalb, IL",
@@ -139,7 +139,7 @@ ceder_data <- bind_rows(experts,clients,projects,niddk) %>%
   ungroup() %>%
   mutate(city_lab = paste0(location," <br>",type)) %>%
   #turn type into a factor to control legend order
-  mutate(type = factor(type, levels = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community","NIDDK Projects")))
+  mutate(type = factor(type, levels = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community","NIDDK Award Sites")))
 
 
 ```
@@ -286,8 +286,8 @@ ceder_map_function <- function(state_sf, city_sf, shift_geos=T){
 #create color bins for city circles
   
   #split niddk separately for better layering
-  niddk_sf <- city_sf %>% filter(type == "NIDDK Projects")
-  city_sf_filter <- city_sf %>% filter(type != "NIDDK Projects") %>%
+  niddk_sf <- city_sf %>% filter(type == "NIDDK Award Sites")
+  city_sf_filter <- city_sf %>% filter(type != "NIDDK Award Sites") %>%
     mutate(type = factor(type, levels = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community")))
      
   #map colors
@@ -362,7 +362,7 @@ map_ceder <- leaflet(state_sf) %>%
                    weight = 0.3, # outline weight
                    radius = niddk_sf$freq_log, 
                    label = labels_niddk,
-                   group = "NIDDK Projects",
+                   group = "NIDDK Award Sites",
                    options = pathOptions(pane = "niddkPane") #set underneath
                    ) %>%      
   #add city circles
@@ -378,11 +378,11 @@ map_ceder <- leaflet(state_sf) %>%
                    options = pathOptions(pane = "cityPane") #set on top
                    ) %>%
   #add layer control for city circles
-  addLayersControl(overlayGroups = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community" ,"NIDDK Projects"), 
+  addLayersControl(overlayGroups = c("Client Locations","Project Locations","Experts: Academic", "Experts: Community" ,"NIDDK Award Sites"), 
                        options = layersControlOptions(collapsed = FALSE, autoZIndex = FALSE),
                        position = "bottomleft") %>%
   #default NIDDK projects off
-  hideGroup("NIDDK Projects") %>%
+  hideGroup("NIDDK Award Sites") %>%
   #add legend for city circles
   addLegend("bottomright", 
             pal = city_bins, 
